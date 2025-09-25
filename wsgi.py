@@ -1,34 +1,29 @@
 import click, pytest, sys 
 from flask.cli import with_appcontext, AppGroup
+from datetime import datetime
 
 from App.database import db, get_migrate
 from App.models import User
 from App.main import create_app
-from App.controllers import ( create_user, get_all_users_json, get_all_users, initialize )
-
-
-# This commands file allow you to create convenient CLI commands for testing controllers
+from App.controllers import (
+    create_user, get_all_users_json, get_all_users, initialize,
+    schedule_shift, get_combined_roster, clock_in, clock_out, get_shift_report
+)
 
 app = create_app()
 migrate = get_migrate(app)
 
-# This command creates and initializes the database
 @app.cli.command("init", help="Creates and initializes the database")
 def init():
     initialize()
     print('database intialized')
 
+
 '''
 User Commands
 '''
-
-# Commands can be organized using groups
-
-# create a group, it would be the first argument of the comand
-# eg : flask user <command>
 user_cli = AppGroup('user', help='User object commands') 
 
-# Then define the command and any parameters and annotate it with the group (@)
 @user_cli.command("create", help="Creates a user")
 @click.argument("username", default="rob")
 @click.argument("password", default="robpass")
@@ -36,8 +31,6 @@ user_cli = AppGroup('user', help='User object commands')
 def create_user_command(username, password, role):
     create_user(username, password, role)
     print(f'{username} created!')
-
-# this command will be : flask user create bob bobpass
 
 @user_cli.command("list", help="Lists users in the database")
 @click.argument("format", default="string")
@@ -47,12 +40,57 @@ def list_user_command(format):
     else:
         print(get_all_users_json())
 
-app.cli.add_command(user_cli) # add the group to the cli
+app.cli.add_command(user_cli)
+
+
+'''
+Shift Commands
+'''
+shift_cli = AppGroup('shift', help='Shift management commands')
+
+@shift_cli.command("schedule", help="Admin schedules a shift")
+@click.argument("admin_id", type=int)
+@click.argument("staff_id", type=int)
+@click.argument("start")
+@click.argument("end")
+def schedule_shift_command(admin_id, staff_id, start, end):
+    start_time = datetime.fromisoformat(start)
+    end_time = datetime.fromisoformat(end)
+    shift = schedule_shift(admin_id, staff_id, start_time, end_time)
+    print(f"Shift scheduled: {shift.get_json()}")
+
+@shift_cli.command("roster", help="Staff views combined roster")
+@click.argument("staff_id", type=int)
+def roster_command(staff_id):
+    roster = get_combined_roster(staff_id)
+    print(roster)
+
+@shift_cli.command("clockin", help="Staff clocks in")
+@click.argument("staff_id", type=int)
+@click.argument("shift_id", type=int)
+def clockin_command(staff_id, shift_id):
+    shift = clock_in(staff_id, shift_id)
+    print(f"Clocked in: {shift.get_json()}")
+
+@shift_cli.command("clockout", help="Staff clocks out")
+@click.argument("staff_id", type=int)
+@click.argument("shift_id", type=int)
+def clockout_command(staff_id, shift_id):
+    shift = clock_out(staff_id, shift_id)
+    print(f"Clocked out: {shift.get_json()}")
+
+@shift_cli.command("report", help="Admin views shift report")
+@click.argument("admin_id", type=int)
+def report_command(admin_id):
+    report = get_shift_report(admin_id)
+    print(report)
+
+app.cli.add_command(shift_cli)
+
 
 '''
 Test Commands
 '''
-
 test = AppGroup('test', help='Testing commands') 
 
 @test.command("user", help="Run User tests")
@@ -65,5 +103,4 @@ def user_tests_command(type):
     else:
         sys.exit(pytest.main(["-k", "App"]))
     
-
 app.cli.add_command(test)

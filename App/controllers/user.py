@@ -1,34 +1,44 @@
-from App.models import User
+from App.models import User, Admin, Staff
 from App.database import db
 
+VALID_ROLES = {"user", "staff", "admin"}
+
 def create_user(username, password, role):
-    newuser = User(username=username, password=password)
+    role = role.lower().strip()  # normalize input
+    
+    if role not in VALID_ROLES:
+        raise ValueError(f"Invalid role '{role}'. Must be one of {VALID_ROLES}")
+    
+    if role == "admin":
+        newuser = Admin(username=username, password=password)
+    elif role == "staff":
+        newuser = Staff(username=username, password=password)
+    else:  # role == "user"
+        newuser = User(username=username, password=password, role="user")
+    
     db.session.add(newuser)
     db.session.commit()
     return newuser
 
 def get_user_by_username(username):
-    result = db.session.execute(db.select(User).filter_by(username=username))
-    return result.scalar_one_or_none()
+    return User.query.filter_by(username=username).first()
 
 def get_user(id):
     return db.session.get(User, id)
 
 def get_all_users():
-    return db.session.scalars(db.select(User)).all()
+    return User.query.all()
 
 def get_all_users_json():
     users = get_all_users()
     if not users:
         return []
-    users = [user.get_json() for user in users]
-    return users
+    return [user.get_json() for user in users]
 
 def update_user(id, username):
     user = get_user(id)
     if user:
         user.username = username
-        # user is already in the session; no need to re-add
         db.session.commit()
-        return True
+        return user
     return None

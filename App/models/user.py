@@ -3,21 +3,25 @@ from App.database import db
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username =  db.Column(db.String(20), nullable=False, unique=True)
+    username = db.Column(db.String(20), nullable=False, unique=True)
     password = db.Column(db.String(256), nullable=False)
-
+    role = db.Column(db.String(10), nullable=False)
+    
     __mapper_args__ = {
         "polymorphic_identity": "user",
-        
-        }   
-    def __init__(self, username, password):
+        "polymorphic_on": "role"
+    }   
+    
+    def __init__(self, username, password, role="user"):
         self.username = username
+        self.role = role
         self.set_password(password)
 
     def get_json(self):
-        return{
+        return {
             'id': self.id,
-            'username': self.username
+            'username': self.username,
+            'role': self.role
         }
 
     def set_password(self, password):
@@ -27,28 +31,21 @@ class User(db.Model):
     def check_password(self, password):
         """Check hashed password."""
         return check_password_hash(self.password, password)
-    
-class Admin(User):
-    adminID = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
 
+class Admin(User):
+    
     __mapper_args__ = {
         "polymorphic_identity": "admin",
-        
-        }
+    }
+    
     def __init__(self, username, password):
-        super().__init__(username, password)
-        self.adminID = self.id
+        super().__init__(username, password, "admin")
 
 class Staff(User):
-    staffID = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     
     __mapper_args__ = {
         "polymorphic_identity": "staff",
-        
-        }
+    }
+    
     def __init__(self, username, password):
-        super().__init__(username, password)
-        self.staffID = self.id
-        
-
-
+        super().__init__(username, password, "staff")

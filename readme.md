@@ -143,7 +143,7 @@ flask shift clockin 2 1
 flask shift clockout 2 1
 ```
 
-shift Report (Admin only)
+Shift Report (Admin only)
 
 After flask  type shift report and the admin id
 
@@ -152,6 +152,29 @@ flask shift report 1
 ```
 
 # Managing schedule
+
+Create Schedule(Admin only)
+
+After flask type schedule, create, the title and the admin id
+
+```bash
+flask schedule create "April Week 2" 1
+```
+
+List All Schedules(Admin only)
+
+After flask  type schedule  list
+
+```bash
+flask schedule list
+```
+View a Schedule (Admin only)
+
+After flask type schedule view and the schedule id
+
+```bash
+flask schedule view 1
+```
 
 # Database Migrations
 If changes to the models are made, the database must be'migrated' so that it can be synced with the new models.

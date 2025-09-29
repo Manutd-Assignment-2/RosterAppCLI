@@ -103,6 +103,9 @@ When connecting the project to a fresh empty database ensure the appropriate con
 ```bash
 $ flask init
 ```
+# User Management
+#Managing shifts
+# Managing schedule
 
 # Database Migrations
 If changes to the models are made, the database must be'migrated' so that it can be synced with the new models.

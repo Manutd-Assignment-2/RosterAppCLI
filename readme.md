@@ -100,11 +100,57 @@ You can deploy your version of this app to render by clicking on the "Deploy to 
 # Initializing the Database
 When connecting the project to a fresh empty database ensure the appropriate configuration is set then file then run the following command. This must also be executed once when running the app on heroku by opening the heroku console, executing bash and running the command in the dyno.
 
+This creates 4 users id 1 is the admin, id 2 and 3 are staff and 4 is a user
 ```bash
 $ flask init
 ```
 # User Management
-#Managing shifts
+
+Create Users
+
+After flask type user create then add the username, the password and the role of the user (either admin, staff or user)
+
+```bash
+flask user create admin1 adminpass admin
+```
+List users
+```bash
+flask user list string
+flask user list json
+```
+# Managing shifts
+
+To Schedule shifts (Admin only)
+
+After flask type shift  schedule the admin id the staff the the scheduele is for and the start and end of the shift in the ISO 8601 DateTime with time format( can copy the formant below and edit it)
+
+```bash
+flask shift schedule 1 2 2025-10-01T09:00:00 2025-10-01T17:00:00
+```
+View Roster (Staff only)
+
+After flask type shift roster and the id of the staff you want to view
+
+```bash
+flask shift roster 2
+```
+Clockin and Clockout(Staff only)
+
+After flask type shift clockin or clockout, the staff id and the shift id
+
+```bash
+flask shift clockin 2 1
+flask shift clockout 2 1
+```
+
+shift Report (Admin only)
+
+After flask  type shift report and the admin id
+
+```bash
+flask shift report 1
+```
+
 # Managing schedule
 
 # Database Migrations

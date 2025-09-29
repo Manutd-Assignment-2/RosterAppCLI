@@ -98,21 +98,34 @@ def create_schedule_command(name, admin_id):
     db.session.commit()
     print(f"Schedule created: {schedule.get_json()}")
 
+
 @schedule_cli.command("list", help="List all schedules")
-def list_schedules_command():
+@click.argument("admin_id", type=int)
+def list_schedules_command(admin_id):
     from App.models import Schedule
+    from App.controllers import get_user
+    admin = get_user(admin_id)
+    if not admin or admin.role != "admin":
+        raise PermissionError("Only admins can list schedules")
     schedules = Schedule.query.all()
     print([s.get_json() for s in schedules])
 
+
 @schedule_cli.command("view", help="View a schedule and its shifts")
 @click.argument("schedule_id", type=int)
-def view_schedule_command(schedule_id):
+@click.argument("admin_id", type=int)
+def view_schedule_command(schedule_id, admin_id):
     from App.models import Schedule
+    from App.controllers import get_user
+    admin = get_user(admin_id)
+    if not admin or admin.role != "admin":
+        raise PermissionError("Only admins can view schedules")
     schedule = db.session.get(Schedule, schedule_id)
     if not schedule:
         print("Schedule not found")
     else:
         print(schedule.get_json())
+
 
 app.cli.add_command(schedule_cli)
 '''

@@ -163,17 +163,17 @@ flask schedule create "April Week 2" 1
 
 List All Schedules(Admin only)
 
-After flask  type schedule  list
+After flask  type schedule  list and the admin id
 
 ```bash
-flask schedule list
+flask schedule list 1
 ```
 View a Schedule (Admin only)
 
-After flask type schedule view and the schedule id
+After flask type schedule view, the schedule id and the admin id
 
 ```bash
-flask schedule view 1
+flask schedule view 1 1
 ```
 
 # Database Migrations

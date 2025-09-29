@@ -33,6 +33,7 @@ class User(db.Model):
 
 
 class Admin(User):
+    id = db.Column(db.Integer, db.ForeignKey("user.id"), primary_key=True)
     __mapper_args__ = {
         "polymorphic_identity": "admin",
     }
@@ -42,6 +43,7 @@ class Admin(User):
 
 
 class Staff(User):
+    id = db.Column(db.Integer, db.ForeignKey("user.id"), primary_key=True)
     __mapper_args__ = {
         "polymorphic_identity": "staff",
     }
@@ -49,16 +51,37 @@ class Staff(User):
     def __init__(self, username, password):
         super().__init__(username, password, "staff")
 
+class Schedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False) 
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)  
+    shifts = db.relationship("Shift", backref="schedule", lazy=True)
 
+    def shift_count(self):
+        return len(self.shifts)
+
+    def get_json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "created_at": self.created_at.isoformat(),
+            "created_by": self.created_by,
+            "shift_count": self.shift_count(),
+            "shifts": [shift.get_json() for shift in self.shifts]
+        }
+    
 class Shift(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     staff_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    schedule_id = db.Column(db.Integer, db.ForeignKey("schedule.id"), nullable=True)  
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     clock_in = db.Column(db.DateTime, nullable=True)
     clock_out = db.Column(db.DateTime, nullable=True)
 
     staff = db.relationship("Staff", backref="shifts", foreign_keys=[staff_id])
+
 
     def get_json(self):
         return {

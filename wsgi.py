@@ -19,9 +19,6 @@ def init():
     print('database intialized')
 
 
-'''
-User Commands
-'''
 user_cli = AppGroup('user', help='User object commands') 
 
 @user_cli.command("create", help="Creates a user")
@@ -43,9 +40,7 @@ def list_user_command(format):
 app.cli.add_command(user_cli)
 
 
-'''
-Shift Commands
-'''
+
 shift_cli = AppGroup('shift', help='Shift management commands')
 
 @shift_cli.command("schedule", help="Admin schedules a shift")
@@ -87,7 +82,39 @@ def report_command(admin_id):
 
 app.cli.add_command(shift_cli)
 
+schedule_cli = AppGroup('schedule', help='Schedule management commands')
 
+@schedule_cli.command("create", help="Create a schedule")
+@click.argument("name")
+@click.argument("admin_id", type=int)
+def create_schedule_command(name, admin_id):
+    from App.models import Schedule
+    from App.controllers import get_user
+    admin = get_user(admin_id)
+    if not admin or admin.role != "admin":
+        raise PermissionError("Only admins can create schedules")
+    schedule = Schedule(name=name, created_by=admin_id)
+    db.session.add(schedule)
+    db.session.commit()
+    print(f"Schedule created: {schedule.get_json()}")
+
+@schedule_cli.command("list", help="List all schedules")
+def list_schedules_command():
+    from App.models import Schedule
+    schedules = Schedule.query.all()
+    print([s.get_json() for s in schedules])
+
+@schedule_cli.command("view", help="View a schedule and its shifts")
+@click.argument("schedule_id", type=int)
+def view_schedule_command(schedule_id):
+    from App.models import Schedule
+    schedule = db.session.get(Schedule, schedule_id)
+    if not schedule:
+        print("Schedule not found")
+    else:
+        print(schedule.get_json())
+
+app.cli.add_command(schedule_cli)
 '''
 Test Commands
 '''

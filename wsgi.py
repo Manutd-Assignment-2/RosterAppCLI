@@ -4,10 +4,10 @@ from datetime import datetime
 
 from App.database import db, get_migrate
 from App.models import User
-from App.main import create_app
+from App.main import create_app 
 from App.controllers import (
     create_user, get_all_users_json, get_all_users, initialize,
-    schedule_shift, get_combined_roster, clock_in, clock_out, get_shift_report
+    schedule_shift, get_combined_roster, clock_in, clock_out, get_shift_report, login
 )
 
 app = create_app()
@@ -17,6 +17,20 @@ migrate = get_migrate(app)
 def init():
     initialize()
     print('database intialized')
+
+auth_cli = AppGroup('auth', help='Authentication commands')
+
+@auth_cli.command("login", help="Login and get JWT token")
+@click.argument("username")
+@click.argument("password")
+def login_command(username, password):
+    token = login(username, password)
+    if token:
+        print(f" User {username} Login successful! /*JWT token is:\n{token} */") 
+    else:
+        print(" Invalid username or password.")
+
+app.cli.add_command(auth_cli)
 
 
 user_cli = AppGroup('user', help='User object commands') 

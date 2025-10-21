@@ -10,8 +10,6 @@ def login(username, password):
     # Store ONLY the user id as a string in JWT 'sub'
     return create_access_token(identity=str(user.id))
   return None
-
-
 def setup_jwt(app):
   jwt = JWTManager(app)
 

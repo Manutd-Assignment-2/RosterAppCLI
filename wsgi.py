@@ -24,12 +24,19 @@ auth_cli = AppGroup('auth', help='Authentication commands')
 @click.argument("username")
 @click.argument("password")
 def login_command(username, password):
-    token = login(username, password)
-    if token:
-        print(f" User {username} Login successful! /*JWT token is:\n{token} */") 
+    result = login(username, password)
+    if result["message"] == "Login successful":
+        print(f"✅ {result['message']}! JWT token:\n{result['token']}")
     else:
-        print(" Invalid username or password.")
+        print(f"⚠️ {result['message']}")
 
+@auth_cli.command("logout", help="Logout a user by username")
+@click.argument("username")
+def logout_command(username):
+    from App.controllers.auth import logout
+    result = logout(username)
+    print(result["message"])
+    
 app.cli.add_command(auth_cli)
 
 

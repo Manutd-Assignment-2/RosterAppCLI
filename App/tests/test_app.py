@@ -1,6 +1,5 @@
 import os, tempfile, pytest, logging, unittest
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from App.main import create_app
 from App.database import db, create_db
 from App.models import User
@@ -19,13 +18,25 @@ LOGGER = logging.getLogger(__name__)
 '''
    Unit Tests
 '''
+
+
+
 class UserUnitTests(unittest.TestCase):
 
-    def test_new_user(self):
-        user = User("bob", "bobpass","admin")
-        assert user.username == "bob"
+# User unit tests
+    def test_new_user_admin(self):
+        user = create_user("bot", "bobpass","admin")
+        assert user.username == "bot"
 
-    # pure function no side effects or integrations called
+    def test_new_user_staff(self):
+        user = create_user("pam", "pampass","staff")
+        assert user.username == "pam"
+
+    def test_create_user_invalid_role(self):
+        user = create_user("jim", "jimpass","ceo")
+        assert user == None
+
+
     def test_get_json(self):
         user = User("bob", "bobpass", "admin")
         user_json = user.get_json()
@@ -57,18 +68,14 @@ def empty_db():
 
 
 def test_authenticate():
-    user = create_user("bob", "bobpass","admin")
+    user = create_user("bob", "bobpass","user")
     assert login("bob", "bobpass") != None
 
 class UsersIntegrationTests(unittest.TestCase):
 
-    def test_create_user(self):
-        user = create_user("rick", "rickpass","staff")
-        assert user.username == "rick"
-
     def test_get_all_users_json(self):
         users_json = get_all_users_json()
-        self.assertListEqual([{"id":1, "username":"bob", "role":"admin"}, {"id":2, "username":"rick","role":"staff"}], users_json)
+        self.assertListEqual([{"id":1, "username":"bot", "role":"admin"}, {"id":2, "username":"pam","role":"staff"}, {"id":3, "username":"bob","role":"user"}], users_json)
 
     # Tests data changes in the database
     def test_update_user(self):

@@ -129,18 +129,18 @@ flask shift schedule 2 2025-10-01T09:00:00 2025-10-01T17:00:00
 ```
 View Roster (Staff only)
 
-After flask type shift roster and the id of the staff you want to view
+After flask type shift roster to for the logged in staff
 
 ```bash
-flask shift roster 2
+flask shift roster 
 ```
 Clockin and Clockout(Staff only)
 
-After flask type shift clockin or clockout, the staff id and the shift id
+After flask type shift clockin or clockoutand the shift id
 
 ```bash
-flask shift clockin 2 1
-flask shift clockout 2 1
+flask shift clockin 1
+flask shift clockout 1
 ```
 
 Shift Report (Admin only)

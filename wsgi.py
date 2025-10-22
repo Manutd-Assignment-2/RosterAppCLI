@@ -84,27 +84,28 @@ def schedule_shift_command(staff_id, start, end):
 
 
 @shift_cli.command("roster", help="Staff views combined roster")
-@click.argument("staff_id", type=int)
-def roster_command(staff_id):
-    roster = get_combined_roster(staff_id)
-    print(f"📋 Roster for staff {staff_id}:")
+def roster_command():
+    staff = require_staff_login()
+    roster = get_combined_roster(staff.id)
+    print(f"📋 Roster for {staff.username}:")
     print(roster)
 
 
 @shift_cli.command("clockin", help="Staff clocks in")
-@click.argument("staff_id", type=int)
 @click.argument("shift_id", type=int)
-def clockin_command(staff_id, shift_id):
-    shift = clock_in(staff_id, shift_id)
-    print(f"🕒 Clocked in: {shift.get_json()}")
+def clockin_command(shift_id):
+    staff = require_staff_login()
+    shift = clock_in(staff.id, shift_id)
+    print(f"🕒 {staff.username} clocked in: {shift.get_json()}")
+
 
 
 @shift_cli.command("clockout", help="Staff clocks out")
-@click.argument("staff_id", type=int)
 @click.argument("shift_id", type=int)
-def clockout_command(staff_id, shift_id):
-    shift = clock_out(staff_id, shift_id)
-    print(f"🕕 Clocked out: {shift.get_json()}")
+def clockout_command(shift_id):
+    staff = require_staff_login()
+    shift = clock_out(staff.id, shift_id)
+    print(f"🕕 {staff.username} clocked out: {shift.get_json()}")
 
 
 @shift_cli.command("report", help="Admin views shift report")
@@ -137,7 +138,28 @@ def require_admin_login():
         return user
     except Exception as e:
         raise PermissionError(f"Invalid or expired token. Please login again. ({e})")
-    
+
+def require_staff_login():
+    import os
+    from flask_jwt_extended import decode_token
+    from App.controllers import get_user
+
+    if not os.path.exists("active_token.txt"):
+        raise PermissionError("⚠️ No active session. Please login first.")
+
+    with open("active_token.txt", "r") as f:
+        token = f.read().strip()
+
+    try:
+        decoded = decode_token(token)
+        user_id = decoded["sub"]
+        user = get_user(user_id)
+        if not user or user.role != "staff":
+            raise PermissionError("🚫 Only staff can use this command.")
+        return user
+    except Exception as e:
+        raise PermissionError(f"Invalid or expired token. Please login again. ({e})")
+
 schedule_cli = AppGroup('schedule', help='Schedule management commands')
 
 @schedule_cli.command("create", help="Create a schedule")

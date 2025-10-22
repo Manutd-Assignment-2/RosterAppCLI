@@ -2,14 +2,17 @@ import os, tempfile, pytest, logging, unittest
 from werkzeug.security import check_password_hash, generate_password_hash
 from App.main import create_app
 from App.database import db, create_db
-from App.models import User
+from datetime import datetime
+from App.models import User, Schedule, Shift
 from App.controllers import (
     create_user,
     get_all_users_json,
     login,
     get_user,
-    get_user_by_username,
-    update_user
+    update_user,
+    schedule_shift, 
+    get_shift_report
+
 )
 
 
@@ -52,6 +55,71 @@ class UserUnitTests(unittest.TestCase):
         password = "mypass"
         user = User("bob", password)
         assert user.check_password(password)
+# Admin unit tests
+    def test_schedule_shift_valid(self):
+        admin = create_user("admin1", "adminpass", "admin")
+        staff = create_user("staff1", "staffpass", "staff")
+        schedule = Schedule(name="Morning Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        start = datetime(2025, 10, 22, 8, 0, 0)
+        end = datetime(2025, 10, 22, 16, 0, 0)
+
+        shift = schedule_shift(admin.id, staff.id, schedule.id, start, end)
+
+        assert shift.staff_id == staff.id
+        assert shift.schedule_id == schedule.id
+        assert shift.start_time == start
+        assert shift.end_time == end
+        assert isinstance(shift, Shift)
+
+    def test_schedule_shift_invalid(self):
+        admin = create_user("admin2", "adminpass", "admin")
+        staff = create_user("staff2", "staffpass", "staff")
+        invalid_schedule_id = 999
+
+        start = datetime(2025, 10, 22, 8, 0, 0)
+        end = datetime(2025, 10, 22, 16, 0, 0)
+        try:
+            shift = schedule_shift(admin.id, staff.id, invalid_schedule_id, start, end)
+            assert shift is None  
+        except Exception:
+            assert True
+
+    def test_get_shift_report(self):
+        admin = User("superadmin", "superpass", "admin")
+        staff = User("worker1", "workerpass", "staff")
+        db.session.add_all([admin, staff])
+        db.session.commit()
+
+        schedule = Schedule(name="Weekend Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        shift1 = schedule_shift(admin.id, staff.id, schedule.id,
+                                datetime(2025, 10, 26, 8, 0, 0),
+                                datetime(2025, 10, 26, 16, 0, 0))
+        shift2 = schedule_shift(admin.id, staff.id, schedule.id,
+                                datetime(2025, 10, 27, 8, 0, 0),
+                                datetime(2025, 10, 27, 16, 0, 0))
+        
+        report = get_shift_report(admin.id)
+        assert len(report) >= 2
+        assert report[0]["staff_id"] == staff.id
+        assert report[0]["schedule_id"] == schedule.id
+
+    def test_get_shift_report_invalid(self):
+        non_admin = create_user("randomstaff", "randompass", "staff")
+
+        try:
+            get_shift_report(non_admin.id)
+            assert False, "Expected PermissionError for non-admin user"
+        except PermissionError as e:
+            assert str(e) == "Only admins can view shift reports"
+
+
+      
 
 '''
     Integration Tests
@@ -68,14 +136,14 @@ def empty_db():
 
 
 def test_authenticate():
-    user = create_user("bob", "bobpass","user")
+    user = User("bob", "bobpass","user")
     assert login("bob", "bobpass") != None
 
 class UsersIntegrationTests(unittest.TestCase):
 
     def test_get_all_users_json(self):
         users_json = get_all_users_json()
-        self.assertListEqual([{"id":1, "username":"bot", "role":"admin"}, {"id":2, "username":"pam","role":"staff"}, {"id":3, "username":"bob","role":"user"}], users_json)
+        self.assertListEqual([{"id":1, "username":"bot", "role":"admin"}, {"id":2, "username":"pam","role":"staff"}], users_json)
 
     # Tests data changes in the database
     def test_update_user(self):

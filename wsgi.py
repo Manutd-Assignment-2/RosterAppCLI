@@ -1,6 +1,7 @@
-import click, pytest, sys 
+import click, pytest, sys, os
 from flask.cli import with_appcontext, AppGroup
 from datetime import datetime
+from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 
 from App.database import db, get_migrate
 from App.models import User
@@ -26,7 +27,10 @@ auth_cli = AppGroup('auth', help='Authentication commands')
 def login_command(username, password):
     result = login(username, password)
     if result["message"] == "Login successful":
-        print(f"✅ {result['message']}! JWT token:\n{result['token']}")
+        token = result["token"]
+        with open("active_token.txt", "w") as f:
+            f.write(token)
+        print(f"✅ {result['message']}! JWT token saved for CLI use.")
     else:
         print(f"⚠️ {result['message']}")
 
@@ -35,6 +39,8 @@ def login_command(username, password):
 def logout_command(username):
     from App.controllers.auth import logout
     result = logout(username)
+    if os.path.exists("active_token.txt"):
+        os.remove("active_token.txt")
     print(result["message"])
     
 app.cli.add_command(auth_cli)
@@ -65,88 +71,107 @@ app.cli.add_command(user_cli)
 shift_cli = AppGroup('shift', help='Shift management commands')
 
 @shift_cli.command("schedule", help="Admin schedules a shift")
-@click.argument("admin_id", type=int)
 @click.argument("staff_id", type=int)
 @click.argument("start")
 @click.argument("end")
-def schedule_shift_command(admin_id, staff_id, start, end):
+def schedule_shift_command(staff_id, start, end):
+    from datetime import datetime
+    admin = require_admin_login()
     start_time = datetime.fromisoformat(start)
     end_time = datetime.fromisoformat(end)
-    shift = schedule_shift(admin_id, staff_id, start_time, end_time)
-    print(f"Shift scheduled: {shift.get_json()}")
+    shift = schedule_shift(admin.id, staff_id, start_time, end_time)
+    print(f"✅ Shift scheduled by {admin.username}: {shift.get_json()}")
+
 
 @shift_cli.command("roster", help="Staff views combined roster")
 @click.argument("staff_id", type=int)
 def roster_command(staff_id):
     roster = get_combined_roster(staff_id)
+    print(f"📋 Roster for staff {staff_id}:")
     print(roster)
+
 
 @shift_cli.command("clockin", help="Staff clocks in")
 @click.argument("staff_id", type=int)
 @click.argument("shift_id", type=int)
 def clockin_command(staff_id, shift_id):
     shift = clock_in(staff_id, shift_id)
-    print(f"Clocked in: {shift.get_json()}")
+    print(f"🕒 Clocked in: {shift.get_json()}")
+
 
 @shift_cli.command("clockout", help="Staff clocks out")
 @click.argument("staff_id", type=int)
 @click.argument("shift_id", type=int)
 def clockout_command(staff_id, shift_id):
     shift = clock_out(staff_id, shift_id)
-    print(f"Clocked out: {shift.get_json()}")
+    print(f"🕕 Clocked out: {shift.get_json()}")
+
 
 @shift_cli.command("report", help="Admin views shift report")
-@click.argument("admin_id", type=int)
-def report_command(admin_id):
-    report = get_shift_report(admin_id)
+def report_command():
+    admin = require_admin_login()
+    report = get_shift_report(admin.id)
+    print(f"📊 Shift report for {admin.username}:")
     print(report)
 
 app.cli.add_command(shift_cli)
 
+
+def require_admin_login():
+    import os
+    from flask_jwt_extended import decode_token
+    from App.controllers import get_user
+
+    if not os.path.exists("active_token.txt"):
+        raise PermissionError("⚠️ No active session. Please login first.")
+
+    with open("active_token.txt", "r") as f:
+        token = f.read().strip()
+
+    try:
+        decoded = decode_token(token)
+        user_id = decoded["sub"]
+        user = get_user(user_id)
+        if not user or user.role != "admin":
+            raise PermissionError("🚫 Only an admin can use this command.")
+        return user
+    except Exception as e:
+        raise PermissionError(f"Invalid or expired token. Please login again. ({e})")
+    
 schedule_cli = AppGroup('schedule', help='Schedule management commands')
 
 @schedule_cli.command("create", help="Create a schedule")
 @click.argument("name")
-@click.argument("admin_id", type=int)
-def create_schedule_command(name, admin_id):
+def create_schedule_command(name):
     from App.models import Schedule
-    from App.controllers import get_user
-    admin = get_user(admin_id)
-    if not admin or admin.role != "admin":
-        raise PermissionError("Only admins can create schedules")
-    schedule = Schedule(name=name, created_by=admin_id)
+    admin = require_admin_login()
+    schedule = Schedule(name=name, created_by=admin.id)
     db.session.add(schedule)
     db.session.commit()
-    print(f"Schedule created: {schedule.get_json()}")
+    print(f"✅ Schedule created: {schedule.get_json()}")
 
 
 @schedule_cli.command("list", help="List all schedules")
-@click.argument("admin_id", type=int)
-def list_schedules_command(admin_id):
+def list_schedules_command():
     from App.models import Schedule
-    from App.controllers import get_user
-    admin = get_user(admin_id)
-    if not admin or admin.role != "admin":
-        raise PermissionError("Only admins can list schedules")
+    admin = require_admin_login()
     schedules = Schedule.query.all()
-    print([s.get_json() for s in schedules])
+    print(f"✅ Found {len(schedules)} schedule(s):")
+    for s in schedules:
+        print(s.get_json())
 
 
 @schedule_cli.command("view", help="View a schedule and its shifts")
 @click.argument("schedule_id", type=int)
-@click.argument("admin_id", type=int)
-def view_schedule_command(schedule_id, admin_id):
+def view_schedule_command(schedule_id):
     from App.models import Schedule
-    from App.controllers import get_user
-    admin = get_user(admin_id)
-    if not admin or admin.role != "admin":
-        raise PermissionError("Only admins can view schedules")
+    admin = require_admin_login()
     schedule = db.session.get(Schedule, schedule_id)
     if not schedule:
-        print("Schedule not found")
+        print("⚠️ Schedule not found.")
     else:
+        print(f"✅ Viewing schedule {schedule_id}:")
         print(schedule.get_json())
-
 
 app.cli.add_command(schedule_cli)
 '''

@@ -122,10 +122,10 @@ flask user list json
 
 To Schedule shifts (Admin only)
 
-After flask type shift  schedule the staff id and the scheduele is for and the start and end of the shift in the ISO 8601 DateTime with time format( can copy the formant below and edit it)
+After flask type shift  schedule the staff id, the schedule idand the start and end of the shift in the ISO 8601 DateTime with time format( can copy the formant below and edit it)
 
 ```bash
-flask shift schedule 2 2025-10-01T09:00:00 2025-10-01T17:00:00
+flask shift schedule 2 1 2025-10-01T09:00:00 2025-10-01T17:00:00
 ```
 View Roster (Staff only)
 

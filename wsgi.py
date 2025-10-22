@@ -70,17 +70,20 @@ app.cli.add_command(user_cli)
 
 shift_cli = AppGroup('shift', help='Shift management commands')
 
-@shift_cli.command("schedule", help="Admin schedules a shift")
+@shift_cli.command("schedule", help="Admin schedules a shift and assigns it to a schedule")
 @click.argument("staff_id", type=int)
+@click.argument("schedule_id", type=int)
 @click.argument("start")
 @click.argument("end")
-def schedule_shift_command(staff_id, start, end):
+def schedule_shift_command(staff_id, schedule_id, start, end):
     from datetime import datetime
     admin = require_admin_login()
     start_time = datetime.fromisoformat(start)
     end_time = datetime.fromisoformat(end)
-    shift = schedule_shift(admin.id, staff_id, start_time, end_time)
-    print(f"✅ Shift scheduled by {admin.username}: {shift.get_json()}")
+    shift = schedule_shift(admin.id, staff_id, schedule_id, start_time, end_time)
+    print(f"✅ Shift scheduled under Schedule {schedule_id} by {admin.username}:")
+    print(shift.get_json())
+
 
 
 @shift_cli.command("roster", help="Staff views combined roster")

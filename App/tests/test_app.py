@@ -33,9 +33,9 @@ class UserUnitTests(unittest.TestCase):
     
     def test_hashed_password(self):
         password = "mypass"
-        hashed = set_password(password, method='sha256')
-        user = User("bob", password)
+        user = User(username="tester", password=password)
         assert user.password != password
+        assert user.check_password(password) is True
 
     def test_check_password(self):
         password = "mypass"
@@ -63,12 +63,12 @@ def test_authenticate():
 class UsersIntegrationTests(unittest.TestCase):
 
     def test_create_user(self):
-        user = create_user("rick", "bobpass","admin")
+        user = create_user("rick", "rickpass","staff")
         assert user.username == "rick"
 
     def test_get_all_users_json(self):
         users_json = get_all_users_json()
-        self.assertListEqual([{"id":1, "username":"bob"}, {"id":2, "username":"rick"}], users_json)
+        self.assertListEqual([{"id":1, "username":"bob", "role":"admin"}, {"id":2, "username":"rick","role":"staff"}], users_json)
 
     # Tests data changes in the database
     def test_update_user(self):

@@ -15,7 +15,7 @@ def create_user(username, password, role):
         newuser = Staff(username=username, password=password)
     else:
         newuser = User(username=username, password=password, role="user")
-    
+
     db.session.add(newuser)
     db.session.commit()
     return newuser

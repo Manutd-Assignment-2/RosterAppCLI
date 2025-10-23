@@ -2,7 +2,7 @@ import os, tempfile, pytest, logging, unittest
 from werkzeug.security import check_password_hash, generate_password_hash
 from App.main import create_app
 from App.database import db, create_db
-from datetime import datetime
+from datetime import datetime, timedelta
 from App.models import User, Schedule, Shift
 from App.controllers import (
     create_user,
@@ -14,7 +14,8 @@ from App.controllers import (
     get_shift_report,
     get_combined_roster,
     clock_in,
-    clock_out
+    clock_out,
+    get_shift 
 )
 
 
@@ -272,5 +273,99 @@ class UsersIntegrationTests(unittest.TestCase):
         ]
         self.assertEqual(users_json, expected)
         
+    def test_admin_schedule_shift_for_staff(self):
+        admin = create_user("admin1", "adminpass", "admin")
+        staff = create_user("staff1", "staffpass", "staff")
+
+        schedule = Schedule(name="Week 1 Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        start = datetime.now()
+        end = start + timedelta(hours=8)
+
+        shift = schedule_shift(admin.id, staff.id, schedule.id, start, end)
+        retrieved = get_user(staff.id)
+
+        self.assertIn(shift.id, [s.id for s in retrieved.shifts])
+        self.assertEqual(shift.staff_id, staff.id)
+        self.assertEqual(shift.schedule_id, schedule.id)
+
+    def test_staff_view_combined_roster(self):
+        admin = create_user("admin", "adminpass", "admin")
+        staff = create_user("jane", "janepass", "staff")
+        other_staff = create_user("mark", "markpass", "staff")
+
+        schedule = Schedule(name="Shared Roster", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        start = datetime.now()
+        end = start + timedelta(hours=8)
+
+        schedule_shift(admin.id, staff.id, schedule.id, start, end)
+        schedule_shift(admin.id, other_staff.id, schedule.id, start, end)
+
+        roster = get_combined_roster(staff.id)
+        self.assertTrue(any(s["staff_id"] == staff.id for s in roster))
+        self.assertTrue(any(s["staff_id"] == other_staff.id for s in roster))
+
+    def test_staff_clock_in_and_out(self):
+        admin = create_user("admin", "adminpass", "admin")
+        staff = create_user("lee", "leepass", "staff")
+
+        schedule = Schedule(name="Daily Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        start = datetime.now()
+        end = start + timedelta(hours=8)
+
+        shift = schedule_shift(admin.id, staff.id, schedule.id, start, end)
+
+        clock_in(staff.id, shift.id)
+        clock_out(staff.id, shift.id)
 
 
+        updated_shift = get_shift(shift.id)
+        self.assertIsNotNone(updated_shift.clock_in)
+        self.assertIsNotNone(updated_shift.clock_out)
+        self.assertLess(updated_shift.clock_in, updated_shift.clock_out)
+    
+    def test_admin_generate_shift_report(self):
+        admin = create_user("boss", "boss123", "admin")
+        staff = create_user("sam", "sampass", "staff")
+
+        schedule = Schedule(name="Weekly Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        start = datetime.now()
+        end = start + timedelta(hours=8)
+
+        schedule_shift(admin.id, staff.id, schedule.id, start, end)
+        report = get_shift_report(admin.id)
+
+        self.assertTrue(any("sam" in r["staff_name"] for r in report))
+        self.assertTrue(all("start_time" in r and "end_time" in r for r in report))
+
+    def test_permission_restrictions(self):
+        admin = create_user("admin", "adminpass", "admin")
+        staff = create_user("worker", "workpass", "staff")
+
+        # Create schedule
+        schedule = Schedule(name="Restricted Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        start = datetime.now()
+        end = start + timedelta(hours=8)
+
+        with self.assertRaises(PermissionError):
+            schedule_shift(staff.id, staff.id, schedule.id, start, end)
+
+        with self.assertRaises(PermissionError):
+            get_combined_roster(admin.id)
+
+        with self.assertRaises(PermissionError):
+            get_shift_report(staff.id)

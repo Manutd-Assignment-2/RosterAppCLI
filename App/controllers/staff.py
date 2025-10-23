@@ -36,3 +36,7 @@ def clock_out(staff_id, shift_id):
     shift.clock_out = datetime.now()
     db.session.commit()
     return shift
+
+def get_shift(shift_id):
+    shift = db.session.get(Shift, shift_id)
+    return shift

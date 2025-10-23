@@ -198,8 +198,26 @@ class UserUnitTests(unittest.TestCase):
         assert clocked_out_shift.clock_out is not None
         assert isinstance(clocked_out_shift.clock_out, datetime)
 
+    def test_clock_out_invalid_user(self):
+        admin = create_user("admin_invalid_out", "adminpass", "admin")
+        schedule = Schedule(name="Invalid ClockOut Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
 
+        staff = create_user("staff_invalid_out", "staffpass", "staff")
+        start = datetime(2025, 10, 28, 8, 0, 0)
+        end = datetime(2025, 10, 28, 16, 0, 0)
+        shift = schedule_shift(admin.id, staff.id, schedule.id, start, end)
 
+        with pytest.raises(PermissionError) as e:
+            clock_out(admin.id, shift.id)
+        assert str(e.value) == "Only staff can clock out"
+
+    def test_clock_out_invalid_shift(self):
+        staff = create_user("staff_invalid_shift_out", "staffpass", "staff")
+        with pytest.raises(ValueError) as e:
+            clock_out(staff.id, 999)  
+        assert str(e.value) == "Invalid shift for staff"
 '''
     Integration Tests
 '''

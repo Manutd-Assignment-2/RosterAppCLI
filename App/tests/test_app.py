@@ -250,11 +250,27 @@ class UsersIntegrationTests(unittest.TestCase):
         users_json = get_all_users_json()
         self.assertListEqual([{"id":1, "username":"bot", "role":"admin"}, {"id":2, "username":"pam","role":"staff"}], users_json)
 
-    # Tests data changes in the database
     def test_update_user(self):
         user = create_user("bot", "bobpass","admin")
         update_user(1, "ronnie")
         user = get_user(1)
         assert user.username == "ronnie"
+
+    def test_create_and_get_user(self):
+        user = create_user("alex", "alexpass", "staff")
+        retrieved = get_user(user.id)
+        self.assertEqual(retrieved.username, "alex")
+        self.assertEqual(retrieved.role, "staff")
+    
+    def test_get_all_users_json_integration(self):
+        create_user("bot", "bobpass", "admin")
+        create_user("pam", "pampass", "staff")
+        users_json = get_all_users_json()
+        expected = [
+            {"id": 1, "username": "bot", "role": "admin"},
+            {"id": 2, "username": "pam", "role": "staff"},
+        ]
+        self.assertEqual(users_json, expected)
         
+
 

@@ -13,8 +13,8 @@ from App.controllers import (
     schedule_shift, 
     get_shift_report,
     get_combined_roster,
-    clock_in
-
+    clock_in,
+    clock_out
 )
 
 
@@ -145,8 +145,58 @@ class UserUnitTests(unittest.TestCase):
         except PermissionError as e:
             assert str(e) == "Only staff can view roster"
 
+    def test_clock_in_valid(self):
+        admin = create_user("admin_clock", "adminpass", "admin")
+        staff = create_user("staff_clock", "staffpass", "staff")
 
+        schedule = Schedule(name="Clock Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
 
+        start = datetime(2025, 10, 25, 8, 0, 0)
+        end = datetime(2025, 10, 25, 16, 0, 0)
+        shift = schedule_shift(admin.id, staff.id, schedule.id, start, end)
+
+        clocked_in_shift = clock_in(staff.id, shift.id)
+        assert clocked_in_shift.clock_in is not None
+        assert isinstance(clocked_in_shift.clock_in, datetime)
+
+    def test_clock_in_invalid_user(self):
+        admin = create_user("admin_clockin", "adminpass", "admin")
+        schedule = Schedule(name="Invalid Clock In", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        staff = create_user("staff_invalid", "staffpass", "staff")
+        start = datetime(2025, 10, 26, 8, 0, 0)
+        end = datetime(2025, 10, 26, 16, 0, 0)
+        shift = schedule_shift(admin.id, staff.id, schedule.id, start, end)
+
+        with pytest.raises(PermissionError) as e:
+            clock_in(admin.id, shift.id)
+        assert str(e.value) == "Only staff can clock in"
+
+    def test_clock_in_invalid_shift(self):
+        staff = create_user("clockstaff_invalid", "clockpass", "staff")
+        with pytest.raises(ValueError) as e:
+            clock_in(staff.id, 999)
+        assert str(e.value) == "Invalid shift for staff"
+
+    def test_clock_out_valid(self):
+        admin = create_user("admin_clockout", "adminpass", "admin")
+        staff = create_user("staff_clockout", "staffpass", "staff")
+
+        schedule = Schedule(name="ClockOut Schedule", created_by=admin.id)
+        db.session.add(schedule)
+        db.session.commit()
+
+        start = datetime(2025, 10, 27, 8, 0, 0)
+        end = datetime(2025, 10, 27, 16, 0, 0)
+        shift = schedule_shift(admin.id, staff.id, schedule.id, start, end)
+
+        clocked_out_shift = clock_out(staff.id, shift.id)
+        assert clocked_out_shift.clock_out is not None
+        assert isinstance(clocked_out_shift.clock_out, datetime)
 
 
 
@@ -157,6 +207,7 @@ class UserUnitTests(unittest.TestCase):
 def clean_db():
     db.drop_all()
     create_db()
+    db.session.remove()
     yield
 # This fixture creates an empty database for the test and deletes it after the test
 # scope="class" would execute the fixture once and resued for all methods in the class
@@ -164,6 +215,7 @@ def clean_db():
 def empty_db():
     app = create_app({'TESTING': True, 'SQLALCHEMY_DATABASE_URI': 'sqlite:///test.db'})
     create_db()
+    db.session.remove()
     yield app.test_client()
     db.drop_all()
 

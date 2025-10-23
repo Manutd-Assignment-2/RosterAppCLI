@@ -8,7 +8,7 @@ from App.models import User
 from App.main import create_app 
 from App.controllers import (
     create_user, get_all_users_json, get_all_users, initialize,
-    schedule_shift, get_combined_roster, clock_in, clock_out, get_shift_report, login
+    schedule_shift, get_combined_roster, clock_in, clock_out, get_shift_report, login,loginCLI
 )
 
 app = create_app()
@@ -25,7 +25,7 @@ auth_cli = AppGroup('auth', help='Authentication commands')
 @click.argument("username")
 @click.argument("password")
 def login_command(username, password):
-    result = login(username, password)
+    result = loginCLI(username, password)
     if result["message"] == "Login successful":
         token = result["token"]
         with open("active_token.txt", "w") as f:

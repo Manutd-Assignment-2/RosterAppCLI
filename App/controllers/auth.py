@@ -6,6 +6,14 @@ from App.models import User
 from App.database import db
 
 def login(username, password):
+  result = db.session.execute(db.select(User).filter_by(username=username))
+  user = result.scalar_one_or_none()
+  if user and user.check_password(password):
+    # Store ONLY the user id as a string in JWT 'sub'
+    return create_access_token(identity=str(user.id))
+  return None
+
+def loginCLI(username, password):
     result = db.session.execute(db.select(User).filter_by(username=username))
     user = result.scalar_one_or_none()
 
@@ -20,7 +28,6 @@ def login(username, password):
         return {"message": "Login successful", "token": token}
 
     return {"message": "Invalid username or password"}
-
 
 def logout(username):
     result = db.session.execute(db.select(User).filter_by(username=username))

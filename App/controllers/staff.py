@@ -16,6 +16,7 @@ def clock_in(staff_id, shift_id):
         raise PermissionError("Only staff can clock in")
 
     shift = db.session.get(Shift, shift_id)
+
     if not shift or shift.staff_id != staff_id:
         raise ValueError("Invalid shift for staff")
 

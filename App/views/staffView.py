@@ -1,6 +1,7 @@
 # app/views/staff_views.py
 from flask import Blueprint, jsonify, request
 from App.controllers import staff, auth
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 
 staff_views = Blueprint('staff_views', __name__, template_folder='../templates')
@@ -10,13 +11,6 @@ staff_views = Blueprint('staff_views', __name__, template_folder='../templates')
 # 2. Clock in 
 # 3. Clock out
 # 4. View specific shift details
-
-#Staff authentication decorator
-# app/views/staff_views.py
-from flask import Blueprint, jsonify
-from App.controllers import staff
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy.exc import SQLAlchemyError
 
 staff_views = Blueprint('staff_views', __name__, template_folder='../templates')
 
@@ -32,14 +26,29 @@ def view_roster():
     except SQLAlchemyError:
         return jsonify({"error": "Database error"}), 500
 
-# Staff Clock in endpoint
-@staff_views.route('/staff/clock_in/<int:shift_id>', methods=['POST'])
+@staff_views.route('/staff/shift', methods=['GET'])
 @jwt_required()
-def clock_in(shift_id):
+def view_shift():
     try:
-        staff_id = get_jwt_identity()
-        shift = staff.clock_in(staff_id, shift_id)  # Call controller
+        data = request.get_json()
+        shift_id = data.get("shiftID")  # gets the shiftID from the request
+        shift = staff.get_shift(shift_id)  # Call controller
+        if not shift:
+            return jsonify({"error": "Shift not found"}), 404
         return jsonify(shift.get_json()), 200
+    except SQLAlchemyError:
+        return jsonify({"error": "Database error"}), 500
+
+# Staff Clock in endpoint
+@staff_views.route('/staff/clock_in', methods=['POST'])
+@jwt_required()
+def clockIn():
+    try:
+        staff_id = int(get_jwt_identity())# db uses int for userID so we must convert
+        data = request.get_json()
+        shift_id = data.get("shiftID")  # gets the shiftID from the request
+        shiftOBJ = staff.clock_in(staff_id, shift_id)  # Call controller
+        return jsonify(shiftOBJ.get_json()), 200
     except (PermissionError, ValueError) as e:
         return jsonify({"error": str(e)}), 403
     except SQLAlchemyError:
@@ -47,11 +56,13 @@ def clock_in(shift_id):
 
 
 # Staff Clock in endpoint
-@staff_views.route('/staff/clock_out/<int:shift_id>', methods=['POST'])
+@staff_views.route('/staff/clock_out/', methods=['POST'])
 @jwt_required()
-def clock_out(shift_id):
+def clock_out():
     try:
-        staff_id = get_jwt_identity()
+        staff_id = int(get_jwt_identity()) # db uses int for userID so we must convert
+        data = request.get_json()
+        shift_id = data.get("shiftID")  # gets the shiftID from the request
         shift = staff.clock_out(staff_id, shift_id)  # Call controller
         return jsonify(shift.get_json()), 200
     except (PermissionError, ValueError) as e:

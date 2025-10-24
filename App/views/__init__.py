@@ -5,7 +5,8 @@ from .index import index_views
 from .auth import auth_views
 from .admin import setup_admin
 from .staffView import staff_views
+from .adminView import admin_view
 
 
-views = [user_views, index_views, auth_views, staff_views] 
+views = [user_views, index_views, auth_views, staff_views,admin_view] 
 # blueprints must be added to this list

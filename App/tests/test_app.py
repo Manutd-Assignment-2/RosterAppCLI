@@ -7,7 +7,7 @@ from App.models import User, Schedule, Shift
 from App.controllers import (
     create_user,
     get_all_users_json,
-    login,
+    loginCLI,
     get_user,
     update_user,
     schedule_shift, 
@@ -241,7 +241,7 @@ def empty_db():
 
 def test_authenticate():
     user = User("bob", "bobpass","user")
-    assert login("bob", "bobpass") != None
+    assert loginCLI("bob", "bobpass") != None
 
 class UsersIntegrationTests(unittest.TestCase):
 

@@ -8,9 +8,26 @@ from App.database import db
 from datetime import datetime
 from App.controllers.user import get_user
 
+def create_schedule(admin_id, scheduleName): #Not sure why this was missing
+    admin = get_user(admin_id)
+    if not admin or admin.role != "admin":
+        raise PermissionError("Only admins can create schedules")
+
+    new_schedule = Schedule(
+        created_by=admin_id,
+        name=scheduleName,
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(new_schedule)
+    db.session.commit()
+
+    return new_schedule
+
 def schedule_shift(admin_id, staff_id, schedule_id, start_time, end_time):
     admin = get_user(admin_id)
     staff = get_user(staff_id)
+
     schedule = db.session.get(Schedule, schedule_id)
 
     if not admin or admin.role != "admin":
